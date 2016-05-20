@@ -206,7 +206,6 @@ public class ActivityMain extends Activity {
                     break;
                 case 0x03:
                     //send txt
-
                     String mmm = String.valueOf(et_msg.getText() + "");
                     if (mmm.length() == 0)
                         return;

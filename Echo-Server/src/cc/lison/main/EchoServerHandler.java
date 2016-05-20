@@ -3,6 +3,7 @@ package cc.lison.main;
 import cc.lison.pojo.EchoFile;
 import cc.lison.pojo.EchoMessage;
 
+import cc.lison.pojo.EchoPojo;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -41,7 +42,7 @@ public class EchoServerHandler extends SimpleChannelInboundHandler<Object> {
             int SumCountPackage = ef.getSumCountPackage();
             int countPackage = ef.getCountPackage();
             byte[] bytes = ef.getBytes();
-            String file_name = ef.getFile_name();//文件名
+            String file_name = ef.getFile_name();
 
             String path = FILE_SAVE_PATH + File.separator + file_name;
             File file = new File(path);
@@ -70,13 +71,18 @@ public class EchoServerHandler extends SimpleChannelInboundHandler<Object> {
             EchoMessage em = (EchoMessage) msg;
             System.out.println("RECEIVED: " + ctx.channel().remoteAddress() + " " + new String(em.getBytes(), CharsetUtil.UTF_8));
 
-            for (Channel channel : channels) {
-                String m = new String(em.getBytes(), CharsetUtil.UTF_8);
-                if (channel == incoming)
-                    incoming.writeAndFlush("YOU " + m);
-                else
-                    channel.writeAndFlush(incoming.remoteAddress() + " " + m);
-            }
+            EchoMessage em_echo = EchoMessage.buildMessage("SYSTEM - GOT YOUR MESSAGE", EchoMessage.MessageType.BUSINESS2SERVER);
+
+//            for (Channel channel : channels) {
+//                String m = new String(em.getBytes(), CharsetUtil.UTF_8);
+//                if (channel == incoming)
+//                    //incoming.writeAndFlush("YOU " + m);
+//                    incoming.writeAndFlush(em_echo);
+//                else
+//                    channel.writeAndFlush(incoming.remoteAddress() + " " + m);
+//            }
+
+            incoming.writeAndFlush(em_echo);
         }
     }
 
@@ -86,15 +92,18 @@ public class EchoServerHandler extends SimpleChannelInboundHandler<Object> {
         Channel incoming = ctx.channel();
         System.out.println("SYSTEM CHANNEL REMOVED: " + incoming.remoteAddress());
 
-        for (Channel channel : channels) {
-            if (channel == incoming)
-                incoming.writeAndFlush("YOU OFFLINE");
-            else
-                channel.writeAndFlush(incoming.remoteAddress() + " OFFLINE");
-        }
+//        for (Channel channel : channels) {
+//            if (channel == incoming)
+//                incoming.writeAndFlush("YOU OFFLINE");
+//            else
+//                channel.writeAndFlush(incoming.remoteAddress() + " OFFLINE");
+//        }
 
         channels.remove(incoming);
         System.out.println("SYSTEM CHANNEL SIZE: " + channels.size());
+
+        EchoPojo pojo = EchoMessage.buildMessage("", EchoMessage.MessageType.CLIENT_OFFLINE);
+        incoming.writeAndFlush(pojo);
     }
 
     @Override
@@ -105,34 +114,37 @@ public class EchoServerHandler extends SimpleChannelInboundHandler<Object> {
 
         channels.add(incoming);
         System.out.println("SYSTEM CHANNEL SIZE: " + channels.size());
-        for (Channel channel : channels) {
-            if (channel == incoming)
-                incoming.writeAndFlush("YOU ONLINE");
-            else
-                channel.writeAndFlush(incoming.remoteAddress() + " ONLINE");
-        }
+
+//        for (Channel channel : channels) {
+//            if (channel == incoming)
+//                incoming.writeAndFlush("YOU ONLINE");
+//            else
+//                channel.writeAndFlush(incoming.remoteAddress() + " ONLINE");
+//        }
+
+        EchoPojo pojo = EchoMessage.buildMessage("", EchoMessage.MessageType.SERVER_ACCEPT);
+        incoming.writeAndFlush(pojo);
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-
-        Channel incoming = ctx.channel();
-        ctx.writeAndFlush(incoming.remoteAddress() + " JOINED");
+        EchoPojo pojo = EchoMessage.buildMessage("", EchoMessage.MessageType.CLIENT_ONLINE);
+        ctx.writeAndFlush(pojo);
         super.channelActive(ctx);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-
-        Channel incoming = ctx.channel();
-        ctx.writeAndFlush(incoming.remoteAddress() + " QUIT");
+        EchoPojo pojo = EchoMessage.buildMessage("", EchoMessage.MessageType.CLIENT_OFFLINE);
+        ctx.writeAndFlush(pojo);
         super.channelInactive(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         cause.printStackTrace();
-        ctx.writeAndFlush("[SYSTEM ERROR] - " + cause.getMessage());
+        EchoPojo pojo = EchoMessage.buildMessage(cause.getMessage(), EchoMessage.MessageType.SERVER_EXCEPTION);
+        ctx.writeAndFlush(pojo);
         ctx.close();
     }
 }
